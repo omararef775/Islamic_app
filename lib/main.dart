@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:islamic_app/core/theme/app_colors.dart';
+import 'package:islamic_app/features/main_navigation/presentation/main_screen.dart';
+import 'package:islamic_app/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+  runApp(  MyApp(showOnboarding:onboardingCompleted));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+   final bool showOnboarding;
+   const MyApp ({super.key,required this.showOnboarding});
 
   // This widget is the root of your application.
   @override
@@ -16,7 +24,8 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
       ),
 
-      home: Scaffold(),
+      home: showOnboarding ? MainScreen() : OnboardingScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
