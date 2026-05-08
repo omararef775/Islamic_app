@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:islamic_app/core/theme/app_colors.dart';
 import 'package:islamic_app/core/utils/permission_manager.dart';
+import 'package:islamic_app/features/prayer_times/presentation/prayer_screen.dart';
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,7 +16,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
   const Center(child: Text('شاشة المصحف', style: TextStyle(color: Colors.white, fontSize: 24))),
   const Center(child: Text('شاشة الأذكار', style: TextStyle(color: Colors.white, fontSize: 24))),
-  const Center(child: Text('شاشة الصلاة', style: TextStyle(color: Colors.white, fontSize: 24))),
+  const PrayerScreen(),
   const Center(child: Text('شاشة القبلة', style: TextStyle(color: Colors.white, fontSize: 24))),
 ];
 
