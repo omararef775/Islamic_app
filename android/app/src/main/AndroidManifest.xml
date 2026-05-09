@@ -14,6 +14,8 @@
     <!-- صلاحيات الجدولة الدقيقة جداً (ضرورية للأنظمة الحديثة) -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="islamic_app"
         android:name="${applicationName}"
