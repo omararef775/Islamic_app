@@ -47,13 +47,6 @@ class PrayerCubit extends Cubit<PrayerState> {
 
   // 4. دالة الجدولة (نقلناها كما هي من الشاشة)
   void _scheduleAllPrayers(PrayerTimes times) {
-    // إشعار الاختبار (اختياري، يمكنك إزالته لاحقاً)
-    NotificationService.scheduleAdhan(
-      id: 0,
-      prayerName: 'التجربة (اختبار النظام)',
-      prayerTime: DateTime.now().add(const Duration(seconds: 10)),
-    );
-
     // الجدولة الحقيقية
     NotificationService.scheduleAdhan(id: 1, prayerName: 'الفجر', prayerTime: times.fajr);
     NotificationService.scheduleAdhan(id: 2, prayerName: 'الظهر', prayerTime: times.dhuhr);

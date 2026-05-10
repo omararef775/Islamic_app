@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // 🎯 ضروري: استدعاء مكتبة Bloc
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:islamic_app/core/theme/app_colors.dart';
 import 'package:islamic_app/core/utils/permission_manager.dart';
+
+// استدعاء الشاشات
 import 'package:islamic_app/features/prayer_times/presentation/prayer_screen.dart';
 import '../../qibla/presentation/pages/qibla_screen.dart';
-import '../../qibla/presentation/manager/qiblah_cubit.dart'; // 🎯 ضروري: استدعاء العقل المدبر
+import '../../adhkar/presentation/pages/adhkar_screen.dart';
+
+// استدعاء العقول المدبرة
+import '../../qibla/presentation/manager/qiblah_cubit.dart';
+import '../../adhkar/presentation/manager/adhkar_cubit.dart';
+import 'package:islamic_app/features/prayer_times/presentation/manager/prayer_cubit.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,74 +24,58 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   Future<void> _requestAppPermissions() async {
-    // طلب اذن الموقع اولا
-    bool locationGranted = await PermissionManager.requestLocationPermission();
-    bool notificationGranted = await PermissionManager.requestNotificationPermission();
+    await PermissionManager.requestLocationPermission();
+    await PermissionManager.requestNotificationPermission();
   }
 
   @override
   void initState() {
     super.initState();
-    // استدعاء دالة الصلاحيات بمجرد فتح الشاشة
     _requestAppPermissions();
   }
 
-  // 🎯 التعديل الجذري: دالة تبني الشاشات ديناميكياً لتفادي أخطاء الـ State
-  Widget _buildBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return const Center(child: Text('شاشة المصحف', style: TextStyle(color: Colors.white, fontSize: 24)));
-      case 1:
-        return const Center(child: Text('شاشة الأذكار', style: TextStyle(color: Colors.white, fontSize: 24)));
-      case 2:
-        return const PrayerScreen();
-      case 3:
-        // 🎯 السحر هنا: قمنا بتغليف الشاشة بـ BlocProvider لربطها بالعقل المدبر
-        return BlocProvider(
-          create: (context) => QiblaCubit(),
-          child: const QiblaScreen(),
-        );
-      default:
-        return const SizedBox();
-    }
-  }
+  // 🎯 أزلنا دالة switch case المدمرة للشاشات
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
+    // 🎯 1. MultiBlocProvider: تهيئة كل العقول مرة واحدة فقط لتعمل باستقرار
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => AdhkarCubit()),
+        BlocProvider(create: (context) => PrayerCubit()..fetchPrayerTimesData()),
+        BlocProvider(create: (context) => QiblaCubit()),
+      ],
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.book),
-            label: 'المصحف',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.mosque),
-            label: 'الاذكار',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.access_time),
-            label: 'الصلاة',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: 'القبلة',
-          ),
-        ],
+        // 🎯 2. IndexedStack: يحتفظ بجميع الشاشات حية في الخلفية
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: const [
+            Center(child: Text('شاشة المصحف', style: TextStyle(color: Colors.white, fontSize: 24))),
+            AdhkarScreen(), // الشاشات الآن نظيفة تماماً ولا تحتوي على BlocProvider
+            PrayerScreen(),
+            QiblaScreen(),
+          ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: AppColors.background,
+          selectedItemColor: AppColors.primary,
+          unselectedItemColor: AppColors.textSecondary,
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.book), label: 'المصحف'),
+            BottomNavigationBarItem(icon: Icon(Icons.mosque), label: 'الاذكار'),
+            BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'الصلاة'),
+            BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'القبلة'),
+          ],
+        ),
       ),
-      backgroundColor: AppColors.background,
-      // 🎯 التعديل: استدعاء الدالة بدلاً من القائمة الثابتة
-      body: _buildBody(), 
     );
   }
 }

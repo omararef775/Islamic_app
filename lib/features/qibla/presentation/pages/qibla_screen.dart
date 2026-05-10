@@ -7,7 +7,7 @@ import '../manager/qiblah_state.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class QiblaScreen extends StatefulWidget {
-  const QiblaScreen({Key? key}) : super(key: key);
+  const QiblaScreen({super.key});
 
   @override
   State<QiblaScreen> createState() => _QiblaScreenState();

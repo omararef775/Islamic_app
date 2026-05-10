@@ -4,10 +4,15 @@ import 'package:islamic_app/features/main_navigation/presentation/main_screen.da
 import 'package:islamic_app/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:islamic_app/core/services/notification_service.dart';
+import 'features/adhkar/data/database_helper.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ar', null);
   await NotificationService.init();
+  await DatabaseHelper.instance.database;
+  
 
   SharedPreferences prefs = await SharedPreferences.getInstance();
   bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
