@@ -12,7 +12,8 @@ import '../../adhkar/presentation/pages/adhkar_screen.dart';
 import '../../qibla/presentation/manager/qiblah_cubit.dart';
 import '../../adhkar/presentation/manager/adhkar_cubit.dart';
 import 'package:islamic_app/features/prayer_times/presentation/manager/prayer_cubit.dart';
-
+import 'package:islamic_app/features/quran/presentation/manager/quran_cubit.dart';
+import 'package:islamic_app/features/quran/presentation/pages/quran_screen.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -39,19 +40,20 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     // 🎯 1. MultiBlocProvider: تهيئة كل العقول مرة واحدة فقط لتعمل باستقرار
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => AdhkarCubit()),
-        BlocProvider(create: (context) => PrayerCubit()..fetchPrayerTimesData()),
-        BlocProvider(create: (context) => QiblaCubit()),
-      ],
-      child: Scaffold(
+    // return MultiBlocProvider(
+    //   providers: [
+    //     BlocProvider(create: (context) => AdhkarCubit()),
+    //     BlocProvider(create: (context) => PrayerCubit()..fetchPrayerTimesData()),
+    //     BlocProvider(create: (context) => QiblaCubit()),
+    //     BlocProvider(create: (context) => QuranCubit()..loadBookmark()),
+    //   ],
+      return Scaffold(
         backgroundColor: AppColors.background,
         // 🎯 2. IndexedStack: يحتفظ بجميع الشاشات حية في الخلفية
         body: IndexedStack(
           index: _selectedIndex,
           children: const [
-            Center(child: Text('شاشة المصحف', style: TextStyle(color: Colors.white, fontSize: 24))),
+            QuranScreen(),
             AdhkarScreen(), // الشاشات الآن نظيفة تماماً ولا تحتوي على BlocProvider
             PrayerScreen(),
             QiblaScreen(),
@@ -75,7 +77,7 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'القبلة'),
           ],
         ),
-      ),
-    );
+      );
+    
   }
 }

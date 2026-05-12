@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; 
 import 'package:islamic_app/core/theme/app_colors.dart';
 import 'package:islamic_app/features/main_navigation/presentation/main_screen.dart';
 import 'package:islamic_app/features/onboarding/presentation/onboarding_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:islamic_app/core/services/notification_service.dart';
 import 'features/adhkar/data/database_helper.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+// استدعاءات العقول المدبرة
+import 'package:islamic_app/features/adhkar/presentation/manager/adhkar_cubit.dart';
+import 'package:islamic_app/features/prayer_times/presentation/manager/prayer_cubit.dart';
+import 'package:islamic_app/features/qibla/presentation/manager/qiblah_cubit.dart';
+import 'package:islamic_app/features/quran/presentation/manager/quran_cubit.dart';
+
+// 🎯 استدعاء شاشة البداية
+import 'package:islamic_app/features/splash/presentation/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,29 +22,32 @@ Future<void> main() async {
   await NotificationService.init();
   await DatabaseHelper.instance.database;
   
+  // 🎯 أزلنا أكواد SharedPreferences من هنا لتسريع فتح التطبيق
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
-
-  runApp(  MyApp(showOnboarding:onboardingCompleted));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-   final bool showOnboarding;
-   const MyApp ({super.key,required this.showOnboarding});
+   // 🎯 أزلنا متغير showOnboarding لأن شاشة Splash ستتولى المهمة
+   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => AdhkarCubit()),
+        BlocProvider(create: (context) => PrayerCubit()..fetchPrayerTimesData()),
+        BlocProvider(create: (context) => QiblaCubit()),
+        BlocProvider(create: (context) => QuranCubit()..loadBookmark()), 
+      ],
+      child: MaterialApp(
+        theme: ThemeData(
+          scaffoldBackgroundColor: AppColors.background,
+        ),
+        // 🎯 التعديل الأهم: جعلنا التطبيق يفتح دائماً على شاشة الـ Splash
+        home: const SplashScreen(),
+        debugShowCheckedModeBanner: false,
       ),
-
-      home: showOnboarding ? MainScreen() : OnboardingScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
-
-
