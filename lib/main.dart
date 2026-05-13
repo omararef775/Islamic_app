@@ -12,7 +12,7 @@ import 'package:islamic_app/features/adhkar/presentation/manager/adhkar_cubit.da
 import 'package:islamic_app/features/prayer_times/presentation/manager/prayer_cubit.dart';
 import 'package:islamic_app/features/qibla/presentation/manager/qiblah_cubit.dart';
 import 'package:islamic_app/features/quran/presentation/manager/quran_cubit.dart';
-
+import 'core/services/daily_reset_service.dart';
 // 🎯 استدعاء شاشة البداية
 import 'package:islamic_app/features/splash/presentation/splash_screen.dart';
 
@@ -21,6 +21,8 @@ Future<void> main() async {
   await initializeDateFormatting('ar', null);
   await NotificationService.init();
   await DatabaseHelper.instance.database;
+  // 🎯 2. السحر هنا: فحص وتصفير الأذكار إذا بدأ يوم جديد قبل أن تفتح الواجهة
+  await DailyResetService.checkAndResetIfNewDay();
   
   // 🎯 أزلنا أكواد SharedPreferences من هنا لتسريع فتح التطبيق
 

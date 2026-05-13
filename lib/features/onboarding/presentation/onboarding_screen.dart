@@ -1,131 +1,203 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:islamic_app/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:islamic_app/features/main_navigation/presentation/main_screen.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../main_navigation/presentation/main_screen.dart';
+
+// 1. كلاس لترتيب محتوى الشاشات الترحيبية
+class OnboardingContent {
+  final String title;
+  final String description;
+  final IconData icon;
+
+  OnboardingContent({required this.title, required this.description, required this.icon});
+}
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
+
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  // 1. تعريف المتحكم
-  late PageController pagecontroller;
-  // 2. تهيئة المتحكم في الذاكرة
+  late PageController _pageController;
+  int _currentIndex = 0;
+
+  // 2. محتوى الشاشات الترحيبية
+  final List<OnboardingContent> _contents = [
+    OnboardingContent(
+      title: "القرآن الكريم",
+      description: "تلاوة القرآن الكريم بالرسم العثماني المطابق لمصحف المدينة مع حفظ تلقائي لتقدمك في القراءة.",
+      icon: Icons.menu_book_rounded,
+    ),
+    OnboardingContent(
+      title: "الأذكار ومواقيت الصلاة",
+      description: "حافظ على أذكارك اليومية، وتابع مواقيت الصلاة بدقة متناهية بناءً على موقعك الجغرافي.",
+      icon: Icons.mosque_rounded,
+    ),
+    OnboardingContent(
+      title: "اتجاه القبلة",
+      description: "حدد اتجاه القبلة أينما كنت حول العالم بسهولة وسرعة باستخدام البوصلة الذكية.",
+      icon: Icons.explore_rounded,
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
-    pagecontroller = PageController();
+    _pageController = PageController();
   }
-  // 3. تدمير المتحكم لتحرير الذاكرة
+
   @override
   void dispose() {
-    pagecontroller.dispose(); 
+    _pageController.dispose();
     super.dispose();
   }
-  Future<void> _saveonboardingState() async {
+
+  Future<void> _completeOnboarding() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_completed', true);
-    print("تم حفظ الشاشة بنجاح");
+    if (!mounted) return;
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const MainScreen()),
+    );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          // 4. الطبقة السفلية (محرك الصفحات)
-          PageView(
-            controller: pagecontroller,
-            children: const [
-              Center(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // زر التخطي (Skip)
+            Align(
+              alignment: Alignment.topLeft,
+              child: TextButton(
+                onPressed: _completeOnboarding,
                 child: Text(
-                  "مواقيت الصلاة",
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  "تخطي",
+                  style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 16),
                 ),
               ),
-              Center(
-                child: Text(
-                  "الأذكار",
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  "اتجاه القبلة",
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
 
-          // 5. الطبقة العلوية (المؤشر والزر)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 50),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+            // محرك عرض الصفحات
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _contents.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // أيقونة مضيئة بتصميم عصري
+                        Container(
+                          padding: const EdgeInsets.all(35),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primary.withAlpha(25), // خلفية شفافة بلون ذهبي
+                            border: Border.all(color: AppColors.primary.withAlpha(100), width: 2),
+                          ),
+                          child: Icon(
+                            _contents[index].icon,
+                            size: 100,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 50),
+                        
+                        // العنوان
+                        Text(
+                          _contents[index].title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 28,
+                            fontFamily: 'Uthmanic',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // الوصف
+                        Text(
+                          _contents[index].description,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(180),
+                            fontSize: 16,
+                            height: 1.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // الفوتر: المؤشر والأزرار
+            Padding(
+              padding: const EdgeInsets.all(40.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // 6. مؤشر الصفحات
+                  // مؤشر الصفحات
                   SmoothPageIndicator(
-                    controller: pagecontroller,
-                    count: 3,
-                    effect: const ExpandingDotsEffect(
+                    controller: _pageController,
+                    count: _contents.length,
+                    effect: ExpandingDotsEffect(
                       activeDotColor: AppColors.primary,
-                      dotColor: AppColors.cards,
-                      dotHeight: 10,
-                      dotWidth: 10,
-                      spacing: 8,
+                      dotColor: AppColors.primary.withAlpha(76),
+                      dotHeight: 8,
+                      dotWidth: 8,
+                      expansionFactor: 3,
+                      spacing: 6,
                     ),
                   ),
-                  
-                  const SizedBox(height: 30), // مسافة فاصلة
-                  
-                  // 7. زر الانتقال
+
+                  // الزر التفاعلي (التالي / ابدأ الآن)
                   ElevatedButton(
-                    onPressed: () async {
-                     await _saveonboardingState();
-                     if (!context.mounted) return;
-                     
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MainScreen(),
-                        ),
-                      );
+                    onPressed: () {
+                      if (_currentIndex == _contents.length - 1) {
+                        _completeOnboarding();
+                      } else {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.ease,
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary, // لون الزر الذهبي
-                      foregroundColor: AppColors.background, // لون النص داخل الزر
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.background,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12), // حواف دائرية للزر
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 0,
                     ),
-                    child: const Text(
-                      "التالي",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    child: Text(
+                      _currentIndex == _contents.length - 1 ? "ابدأ الآن" : "التالي",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

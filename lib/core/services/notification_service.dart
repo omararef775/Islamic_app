@@ -62,4 +62,8 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
+  // دالة لإلغاء جميع الإشعارات (لإيقاف صوت الأذان فوراً)
+  static Future<void> cancelAll() async {
+    await _notificationsPlugin.cancelAll();
+  }
 }

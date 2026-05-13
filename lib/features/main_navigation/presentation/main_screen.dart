@@ -7,13 +7,14 @@ import 'package:islamic_app/core/utils/permission_manager.dart';
 import 'package:islamic_app/features/prayer_times/presentation/prayer_screen.dart';
 import '../../qibla/presentation/pages/qibla_screen.dart';
 import '../../adhkar/presentation/pages/adhkar_screen.dart';
-
+import '../../../core/services/notification_service.dart';
 // استدعاء العقول المدبرة
 import '../../qibla/presentation/manager/qiblah_cubit.dart';
 import '../../adhkar/presentation/manager/adhkar_cubit.dart';
 import 'package:islamic_app/features/prayer_times/presentation/manager/prayer_cubit.dart';
 import 'package:islamic_app/features/quran/presentation/manager/quran_cubit.dart';
 import 'package:islamic_app/features/quran/presentation/pages/quran_screen.dart';
+import 'package:flutter/services.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -33,6 +34,30 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _requestAppPermissions();
+    HardwareKeyboard.instance.addHandler(_handleVolumeButton);
+  }
+  // 🎯 دالة الاستماع لأزرار الصوت
+  bool _handleVolumeButton(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.audioVolumeDown || 
+          event.logicalKey == LogicalKeyboardKey.audioVolumeUp ||
+          event.logicalKey == LogicalKeyboardKey.audioVolumeMute) {
+        
+        // بمجرد الضغط على أي زر صوت، نلغي الإشعارات فيسكت الأذان فوراً
+        NotificationService.cancelAll();
+        
+        // إرجاع false لكي نسمح للنظام بتخفيض الصوت فعلياً بالإضافة لإلغاء الإشعار
+        return false; 
+      }
+    }
+    return false;
+  }
+
+  @override
+  void dispose() {
+    // 🎯 إزالة المراقب عند إغلاق التطبيق لمنع تسريب الذاكرة
+    HardwareKeyboard.instance.removeHandler(_handleVolumeButton);
+    super.dispose();
   }
 
   // 🎯 أزلنا دالة switch case المدمرة للشاشات

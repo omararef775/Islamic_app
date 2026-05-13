@@ -18,30 +18,21 @@ class PrayerCubit extends Cubit<PrayerState> {
     emit(PrayerLoading());
 
     try {
-      // جلب الموقع
+      // إذا كان الـ GPS مغلقاً أو لا توجد صلاحيات، ستقوم هذه الدالة برمي Exception
       Position? position = await PrayerTimeService.getCurrentLocation();
-
+      
       if (position != null) {
-        // حساب الأوقات
         PrayerTimes? times = PrayerTimeService.getPrayerTimes(position);
-        
         if (times != null) {
-          // جدولة الإشعارات
           _scheduleAllPrayers(times);
-          
-          // 💡 هنا السحر! بدلاً من setState، نبث حالة "النجاح" ونرفق معها الأوقات
           emit(PrayerLoaded(times));
         } else {
-          // إذا فشل الحساب الفلكي لسبب ما
-          emit(const PrayerError("حدث خطأ أثناء حساب مواقيت الصلاة."));
+          emit(const PrayerError("حدث خطأ أثناء الحساب الفلكي لمواقيت الصلاة."));
         }
-      } else {
-         // إذا رفض المستخدم صلاحية الـ GPS
-        emit(const PrayerError("يرجى تفعيل الموقع (GPS) لعرض مواقيت الصلاة."));
-      }
+      } 
     } catch (error) {
-      // 🚨 إذا انهار الـ GPS أو واجهنا استثناء، نبث حالة "الخطأ" مع نص المشكلة
-      emit(PrayerError("حدث خطأ غير متوقع: $error"));
+      // 🎯 التقاط الخطأ الحقيقي القادم من السيرفيس وعرضه للمستخدم
+      emit(PrayerError(error.toString()));
     }
   }
 
