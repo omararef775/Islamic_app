@@ -22,12 +22,12 @@ class QuranScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // 🎯 السر هنا: زر "متابعة القراءة" الذي يقرأ الصفحة المحفوظة من الـ Cubit
+          // 🎯 زر متابعة القراءة الذكي
           BlocBuilder<QuranCubit, QuranState>(
             builder: (context, state) {
               int lastPage = 1;
               if (state is QuranLoaded) {
-                lastPage = state.lastReadPage;
+                lastPage = state.currentPage; // تم التعديل ليقرأ الصفحة الحالية من الـ State الجديدة
               }
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -38,7 +38,6 @@ class QuranScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
-                    // الانتقال لآخر صفحة محفوظة
                     Navigator.push(context, MaterialPageRoute(builder: (context) => QuranReadingScreen(initialPage: lastPage)));
                   },
                   icon: const Icon(Icons.menu_book, color: AppColors.background),

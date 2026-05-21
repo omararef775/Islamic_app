@@ -1,34 +1,40 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/quran_db_helper.dart';
+import '../../domain/ayah_model.dart';
 import 'quran_state.dart';
 
 class QuranCubit extends Cubit<QuranState> {
   QuranCubit() : super(QuranInitial());
 
-  // مفتاح التخزين في الذاكرة
   static const String _bookmarkKey = 'last_read_page';
 
-  // 1. دالة جلب آخر صفحة مقروءة (تعمل عند فتح شاشة القرآن)
-  Future<void> loadBookmark() async {
+  // 1. جلب صفحة معينة من قاعدة البيانات
+  Future<void> loadPage(int pageNumber) async {
     emit(QuranLoading());
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // إذا لم يجد صفحة محفوظة (أول مرة يفتح التطبيق)، سيبدأ من الصفحة 1 (الفاتحة)
-      final lastPage = prefs.getInt(_bookmarkKey) ?? 1; 
-      
-      emit(QuranLoaded(lastReadPage: lastPage));
+      final rawVerses = await QuranDatabaseHelper.instance.getVersesByPage(pageNumber);
+      final List<AyahModel> verses = rawVerses.map((v) => AyahModel.fromMap(v)).toList();
+
+      // حفظ التقدم بشكل أولي عند فتح الصفحة
+      await saveBookmark(pageNumber);
+
+      emit(QuranLoaded(verses: verses, currentPage: pageNumber));
     } catch (e) {
-      // في حال حدوث أي خطأ في الذاكرة، نفتح الصفحة الأولى كإجراء احتياطي
-      emit(QuranLoaded(lastReadPage: 1));
+      emit(QuranError('حدث خطأ أثناء تحميل الصفحة: $e'));
     }
   }
 
-  // 2. دالة حفظ الصفحة (تعمل كلما قلب المستخدم صفحة جديدة)
+  // 2. دالة بدء التطبيق (تجلب آخر صفحة وقف عندها المستخدم)
+  Future<void> loadBookmark() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastPage = prefs.getInt(_bookmarkKey) ?? 1; // الفاتحة كافتراضي
+    await loadPage(lastPage);
+  }
+
+  // 🎯 3. الدالة التي كانت ناقصة: حفظ رقم الصفحة في الخلفية عند التمرير
   Future<void> saveBookmark(int pageNumber) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_bookmarkKey, pageNumber);
-    
-    // نُحدث الحالة بالرقم الجديد لكي تتحدث الواجهة إن لزم الأمر
-    emit(QuranLoaded(lastReadPage: pageNumber));
   }
 }
