@@ -1,28 +1,24 @@
+import 'dart:io'; // 🎯 التعديل 1: استدعاء مكتبة io لمعرفة نوع نظام التشغيل
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionManager {
-  // 1. دالة طلب إذن الموقع الجغرافي
+  // 1. دالة طلب إذن الموقع الجغرافي (مواقيت الصلاة والقبلة)
   static Future<bool> requestLocationPermission() async {
-    // التحقق من الحالة الحالية للصلاحية في نظام التشغيل
     PermissionStatus status = await Permission.location.status;
-    // إذا كانت الصلاحية مرفوضة (أو لم تُطلب من قبل)
+
     if (status.isDenied) {
-      // إظهار الرسالة المنبثقة للمستخدم لطلب الصلاحية
       status = await Permission.location.request();
     }
 
-    // إذا قام المستخدم بالرفض النهائي (في الأندرويد، لا يمكن إظهار الرسالة مرة أخرى)
     if (status.isPermanentlyDenied) {
-      // سنقوم لاحقاً ببرمجة توجيه المستخدم لإعدادات الهاتف يدوياً
       await openAppSettings();
       return false;
     }
 
-    // إرجاع (صح) إذا وافق، و (خطأ) إذا رفض
     return status.isGranted;
   }
 
-  // 2. دالة طلب إذن الإشعارات (للأذان والتنبيهات)
+  // 2. دالة طلب إذن الإشعارات (لإطلاق صوت الأذان والتنبيهات في أندرويد 13+)
   static Future<bool> requestNotificationPermission() async {
     PermissionStatus status = await Permission.notification.status;
 
@@ -36,5 +32,28 @@ class PermissionManager {
     }
 
     return status.isGranted;
+  }
+
+  // 3. 🎯 الدالة المثالية لطلب إذن المنبه الدقيق (محمية معمارياً)
+  static Future<bool> requestExactAlarmPermission() async {
+    // التعديل 2: نطلب الإذن فقط إذا كان الهاتف أندرويد
+    if (Platform.isAndroid) {
+      PermissionStatus status = await Permission.scheduleExactAlarm.status;
+
+      if (status.isDenied) {
+        status = await Permission.scheduleExactAlarm.request();
+      }
+
+      // التعديل 3: في أندرويد 14، يجب نقل المستخدم للإعدادات لتفعيلها يدوياً
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+        return false;
+      }
+
+      return status.isGranted;
+    }
+
+    // التعديل 4: إذا كان الهاتف iOS، نرجع (صح) فوراً لكي يكمل التطبيق عمله بدون مشاكل
+    return true;
   }
 }

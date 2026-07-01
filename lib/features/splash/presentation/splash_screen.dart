@@ -41,15 +41,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _startAppLogic();
   }
 
-  Future<void> _startAppLogic() async {
+Future<void> _startAppLogic() async {
     // 1. الانتظار لـ 3.5 ثانية لعرض اللوجو والأنيميشن
     await Future.delayed(const Duration(milliseconds: 3500));
     
-    if (!mounted) return;
-
-    // 2. التحقق من الذاكرة: هل المستخدم أكمل شاشات البدء (Onboarding)؟
+    // 2. التحقق من الذاكرة (هنا يحدث انتظار جديد await)
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    // 🎯 الحماية المعمارية: الفحص يجب أن يكون هنا، بعد كل عمليات الـ await وقبل استخدام الـ context
+    if (!mounted) return;
 
     Widget nextScreen = onboardingCompleted ? const MainScreen() : const OnboardingScreen();
 

@@ -173,7 +173,15 @@ Future _createDB(Database db, int version) async {
 
 
   // إضافة ذكر جديد (للأذكار الأساسية والمخصصة)
+// إضافة ذكر جديد (مع التحقق الصارم من صحة البيانات)
   Future<int> insertDhikr(Map<String, dynamic> dhikr) async {
+    if ((dhikr['text'] as String?)?.trim().isEmpty ?? true) {
+      throw ArgumentError('نص الذكر لا يمكن أن يكون فارغاً');
+    }
+    if ((dhikr['target_count'] as int?) == null || (dhikr['target_count'] as int) <= 0) {
+      throw ArgumentError('عدد التكرار يجب أن يكون أكبر من صفر');
+    }
+    
     final db = await instance.database;
     return await db.insert('adhkar', dhikr);
   }

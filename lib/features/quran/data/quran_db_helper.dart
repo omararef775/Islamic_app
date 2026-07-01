@@ -27,7 +27,10 @@ class QuranDatabaseHelper {
       try {
         await Directory(dirname(path)).create(recursive: true);
         ByteData data = await rootBundle.load('assets/databases/$fileName');
-        List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        List<int> bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
         await File(path).writeAsBytes(bytes, flush: true);
       } catch (e) {
         throw Exception('خطأ في نسخ قاعدة بيانات القرآن: $e');

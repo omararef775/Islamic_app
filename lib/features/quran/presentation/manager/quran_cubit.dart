@@ -13,8 +13,12 @@ class QuranCubit extends Cubit<QuranState> {
   Future<void> loadPage(int pageNumber) async {
     emit(QuranLoading());
     try {
-      final rawVerses = await QuranDatabaseHelper.instance.getVersesByPage(pageNumber);
-      final List<AyahModel> verses = rawVerses.map((v) => AyahModel.fromMap(v)).toList();
+      final rawVerses = await QuranDatabaseHelper.instance.getVersesByPage(
+        pageNumber,
+      );
+      final List<AyahModel> verses = rawVerses
+          .map((v) => AyahModel.fromMap(v))
+          .toList();
 
       // حفظ التقدم بشكل أولي عند فتح الصفحة
       await saveBookmark(pageNumber);

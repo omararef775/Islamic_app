@@ -1,24 +1,32 @@
+import 'package:equatable/equatable.dart';
 import '../../domain/adhkar_model.dart';
 
-abstract class AdhkarState {}
+abstract class AdhkarState extends Equatable {
+  const AdhkarState();
 
-// 1. الحالة الابتدائية (عند فتح التطبيق)
-class AdhkarInitial extends AdhkarState {}
-
-// 2. حالة التحميل (دوران مؤشر التحميل بينما نجلب البيانات من SQLite)
-class AdhkarLoading extends AdhkarState {}
-
-// 3. حالة النجاح (البيانات جاهزة للعرض)
-class AdhkarLoaded extends AdhkarState {
-  final List<AdhkarModel> adhkar;
-  final String currentCategory; // لمعرفة هل نحن في الصباح أم المساء أم المخصص
-
-  AdhkarLoaded(this.adhkar, this.currentCategory);
+  @override
+  List<Object?> get props => [];
 }
 
-// 4. حالة الخطأ (في حال فشل قاعدة البيانات)
+class AdhkarInitial extends AdhkarState {}
+
+class AdhkarLoading extends AdhkarState {}
+
+class AdhkarLoaded extends AdhkarState {
+  final List<AdhkarModel> adhkar;
+  final String currentCategory;
+
+  const AdhkarLoaded(this.adhkar, this.currentCategory);
+
+  @override
+  List<Object?> get props => [adhkar, currentCategory];
+}
+
 class AdhkarError extends AdhkarState {
   final String message;
 
-  AdhkarError(this.message);
+  const AdhkarError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

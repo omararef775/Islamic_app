@@ -2,47 +2,72 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:adhan/adhan.dart';
 
-import 'prayer_state.dart'; // نستدعي ملف الحالات الذي صنعناه للتو
+import 'prayer_state.dart'; 
 import '../../../../core/services/prayer_time_service.dart';
 import '../../../../core/services/notification_service.dart';
 
-// 1. إنشاء الـ Cubit وإخباره أنه سيتعامل فقط مع الفئة الأم PrayerState
 class PrayerCubit extends Cubit<PrayerState> {
   
-  // 2. المُنشئ (Constructor): أول ما يشتغل الـ Cubit، نأمره بالبدء بحالة "التحميل" فوراً
   PrayerCubit() : super(PrayerLoading());
 
-  // 3. دالة جلب الأوقات (نفس الدالة التي كانت في الشاشة، نقلناها هنا)
   Future<void> fetchPrayerTimesData() async {
-    // نبث حالة التحميل (لكي تدور الدائرة في الشاشة)
     emit(PrayerLoading());
-
     try {
-      // إذا كان الـ GPS مغلقاً أو لا توجد صلاحيات، ستقوم هذه الدالة برمي Exception
-      Position? position = await PrayerTimeService.getCurrentLocation();
+      Position? position = await PrayerTimeService.getLocation(forceRefresh: false);
       
       if (position != null) {
-        PrayerTimes? times = PrayerTimeService.getPrayerTimes(position);
-        if (times != null) {
-          _scheduleAllPrayers(times);
-          emit(PrayerLoaded(times));
+        PrayerTimes? todayTimes = await PrayerTimeService.getPrayerTimes(position, DateTime.now());
+        
+        if (todayTimes != null) {
+          // 🎯 انطلقنا بالجدولة لـ 30 يوماً كاملة (شهر كامل من الأذان بلا توقف)
+          _schedulePrayersForNextDays(position);
+          
+          emit(PrayerLoaded(todayTimes));
         } else {
           emit(const PrayerError("حدث خطأ أثناء الحساب الفلكي لمواقيت الصلاة."));
         }
       } 
     } catch (error) {
-      // 🎯 التقاط الخطأ الحقيقي القادم من السيرفيس وعرضه للمستخدم
-      emit(PrayerError(error.toString()));
+      if (error.toString().contains('PERMISSION_DENIED_FOREVER')) {
+        emit(const PrayerError(
+          'صلاحية الموقع مرفوضة نهائياً. يرجى تفعيلها من إعدادات الهاتف لحساب أوقات الصلاة.',
+          isPermissionError: true, 
+        ));
+      } else {
+        emit(PrayerError(error.toString()));
+      }
     }
   }
 
-  // 4. دالة الجدولة (نقلناها كما هي من الشاشة)
-  void _scheduleAllPrayers(PrayerTimes times) {
-    // الجدولة الحقيقية
-    NotificationService.scheduleAdhan(id: 1, prayerName: 'الفجر', prayerTime: times.fajr);
-    NotificationService.scheduleAdhan(id: 2, prayerName: 'الظهر', prayerTime: times.dhuhr);
-    NotificationService.scheduleAdhan(id: 3, prayerName: 'العصر', prayerTime: times.asr);
-    NotificationService.scheduleAdhan(id: 4, prayerName: 'المغرب', prayerTime: times.maghrib);
-    NotificationService.scheduleAdhan(id: 5, prayerName: 'العشاء', prayerTime: times.isha);
+  // 🎯 الجدولة الآمنة والممتدة للأندرويد
+  void _schedulePrayersForNextDays(Position position) async {
+    await NotificationService.cancelAll();
+
+    final DateTime now = DateTime.now();
+
+    // 🎯 تم التعديل إلى 30 يوماً
+    for (int i = 0; i < 30; i++) {
+      DateTime targetDate = now.add(Duration(days: i));
+      PrayerTimes? times = await PrayerTimeService.getPrayerTimes(position, targetDate);
+
+      if (times != null) {
+        int fajrId = _generateUniqueId(targetDate, 1);
+        int dhuhrId = _generateUniqueId(targetDate, 2);
+        int asrId = _generateUniqueId(targetDate, 3);
+        int maghribId = _generateUniqueId(targetDate, 4);
+        int ishaId = _generateUniqueId(targetDate, 5);
+
+        NotificationService.scheduleAdhan(id: fajrId, prayerName: 'الفجر', prayerTime: times.fajr);
+        NotificationService.scheduleAdhan(id: dhuhrId, prayerName: 'الظهر', prayerTime: times.dhuhr);
+        NotificationService.scheduleAdhan(id: asrId, prayerName: 'العصر', prayerTime: times.asr);
+        NotificationService.scheduleAdhan(id: maghribId, prayerName: 'المغرب', prayerTime: times.maghrib);
+        NotificationService.scheduleAdhan(id: ishaId, prayerName: 'العشاء', prayerTime: times.isha);
+      }
+    }
+  }
+
+  int _generateUniqueId(DateTime date, int prayerIndex) {
+    String idString = '${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}$prayerIndex';
+    return int.parse(idString);
   }
 }

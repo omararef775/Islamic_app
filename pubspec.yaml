@@ -49,6 +49,7 @@ dependencies:
   path: ^1.9.1
   flutter_svg: ^2.0.10
   quran: ^1.4.1
+  flutter_timezone: ^5.0.2
   
 
 dev_dependencies:

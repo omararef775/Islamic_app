@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:quran/quran.dart' as quran;
 import '../../../../core/theme/app_colors.dart';
@@ -9,6 +8,7 @@ import '../manager/quran_state.dart';
 import '../../data/quran_db_helper.dart';
 import '../../domain/ayah_model.dart';
 import 'quran_screen.dart';
+import 'dart:math' as math;
 
 class QuranReadingScreen extends StatefulWidget {
   final int initialPage;
@@ -54,31 +54,61 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
     return res;
   }
 
-  // 🎯 دالة القص الجراحية الصارمة: تحسب 19 حرفاً وتتجاهل التشكيل كلياً
-  String _cleanVerseOne(String verse) {
-    String cleanText = verse.trim();
-    // إزالة كل شيء عدا الحروف الأبجدية للمطابقة
-    String noDiacritics = cleanText.replaceAll(RegExp(r'[^\u0621-\u064A]'), '');
+  // 🎯 المشرط الجراحي الذكي: يزيل التشكيل مؤقتاً ليتعرف على البسملة ويبترها بدقة
+//  String _cleanVerseOne(String verse) {
+//   String text = verse.trim();
+  
+//   // دالة داخلية لتجريد النص تماماً من التشكيل وتوحيد الحروف للمقارنة فقط
+//   String normalizeForChecking(String input) {
+//     return input
+//         .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED\u06DF\u06E0\u06E1\u06E2\u06E3\u06E4\u06E5\u06E6\u06E7\u06E8\u06E9\u06EA\u06EB\u06EC\u06ED]'), '') // التشكيل والضبط
+//         .replaceAll(RegExp(r'[\u0671\u0622\u0623\u0625]'), 'ا') // تحويل (ٱ، آ، أ، إ) إلى ألف عادية لضمان التطابق
+//         .trim();
+//   }
 
-    if (noDiacritics.startsWith('بسماللهالرحمنالرحيم')) {
-      int letterCount = 0;
-      int sliceIndex = 0;
+//   String normalizedText = normalizeForChecking(text);
+//   List<String> words = normalizedText.split(RegExp(r'\s+'));
 
-      // البحث عن نقطة القطع الدقيقة في النص الأصلي مع الحفاظ على تشكيله
-      for (int i = 0; i < cleanText.length; i++) {
-        if (RegExp(r'[\u0621-\u064A]').hasMatch(cleanText[i])) {
-          letterCount++;
-        }
-        if (letterCount == 19) {
-          // عدد حروف البسملة
-          sliceIndex = i + 1;
-          break;
-        }
+//   // التحقق الفعلي من الكلمات الأربع الأولى للبسملة بعد التوحيد
+//   if (words.length >= 4 &&
+//       words[0] == 'بسم' &&
+//       words[1] == 'الله' &&
+//       words[2] == 'رحمن' &&
+//       words[3] == 'رحيم') {
+    
+//     List<String> originalWords = text.split(RegExp(r'\s+'));
+//     if (originalWords.length >= 4) {
+//       // إرجاع الآية بعد قطع الكلمات الأربع الأولى المشكلة
+//       return originalWords.sublist(4).join(' ').trim();
+//     }
+//   }
+  
+//   return text;
+// }
+
+// دالة محصنة 100% تقبل الموديل كاملاً لفحص النص الإملائي
+// 🎯 دالة محصنة ونهائية لتجريد وبتر البسملة
+String _getCleanVerseText(AyahModel ayah) {
+  if (ayah.ayaNo == 1 && ayah.sora != 1 && ayah.sora != 9) {
+    
+    // 1. تجريد النص العثماني تماماً من كل الحركات وعلامات الوقف والألف الخنجرية باستخدام نطاقات اليونيكود
+    String clean = ayah.text.replaceAll(RegExp(r'[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]'), '');
+    
+    // 2. توحيد كل أشكال الألف (أ، إ، آ، ٱ) إلى ألف عادية لتسهيل المطابقة
+    clean = clean.replaceAll(RegExp(r'[ٱآأإ]'), 'ا');
+
+    // الآن النص أصبح نظيفاً تماماً ويبدو هكذا: "بسم الله الرحمن الرحيم الم"
+    if (clean.startsWith('بسم الله الرحمن الرحيم')) {
+      // نعود للنص الأصلي المشكل، ونقطعه بناءً على المسافات
+      List<String> uthmaniWords = ayah.text.trim().split(RegExp(r'\s+'));
+      if (uthmaniWords.length >= 4) {
+        // نتجاوز الكلمات الأربع الأولى (البسملة) ونرجع الباقي
+        return uthmaniWords.sublist(4).join(' '); 
       }
-      return cleanText.substring(sliceIndex).trim();
     }
-    return cleanText;
   }
+  return ayah.text;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -164,274 +194,240 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
     );
   }
 
-  Widget _buildMushafPage(int pageNumber, List<AyahModel> verses) {
-    int juz = verses.first.jozz;
-
-    return Column(
-      children: [
-        // الهيدر
-        Padding(
-          padding: const EdgeInsets.only(
-            top: 10.0,
-            bottom: 8.0,
-            left: 24.0,
-            right: 24.0,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'الجُزْءُ ${_toArabic(juz)}',
-                style: const TextStyle(
-                  fontFamily: 'Uthmanic',
-                  fontSize: 20,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                'سُورَةُ ${verses.first.soraNameAr}',
-                style: const TextStyle(
-                  fontFamily: 'Uthmanic',
-                  fontSize: 20,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
+  // 🏛️ هندسة الورقة القرآنية (مطابقة لمصحف المدينة)
+Widget _buildMushafPage(int pageNumber, List<AyahModel> verses) {
+  int juz = verses.first.jozz;
+  return Column(
+    children: [
+      // 🥇 الهيدر
+      Padding(
+        padding: const EdgeInsets.only(top: 0.5, bottom: 0.5, left: 24.0, right: 24.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'الجُزْءُ ${_toArabic(juz)}',
+              style: const TextStyle(fontFamily: 'Uthmanic', fontSize: 15, color: Colors.black87),
+            ),
+            Text(
+              'سُورَةُ ${verses.first.soraNameAr}',
+              style: const TextStyle(fontFamily: 'Uthmanic', fontSize: 15, color: Colors.black87),
+            ),
+          ],
         ),
+      ),
 
-        // الإطار الثابت وحساب الخط الدقيق
+      // 🥈 الإطار المزدوج الثابت والمطور (عرض كامل بدون انكماش)
+    // 🥈 الإطار المزدوج الثابت والاحترافي (بدون FittedBox وبدون Scroll)
+       // 🥈 الإطار المزدوج الثابت والاحترافي (الحل النهائي لمنع القص)
         Expanded(
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
-            padding: const EdgeInsets.all(4.0),
+            margin: const EdgeInsets.symmetric(horizontal: 14.0),
+            padding: const EdgeInsets.all(2.0),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.black87, width: 2.5),
+              border: Border.all(color: Colors.black87, width: 1.5),
             ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10.0,
-                vertical: 8.0,
-              ),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black87, width: 1.0),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // 🎯 حساب حجم الخط ليتسع لـ 15 سطراً بدقة (مصحف المدينة)
-                  double calculatedFontSize = constraints.maxHeight / 27.5;
-                  if (calculatedFontSize > 26)
-                    calculatedFontSize = 26; // حد أقصى للخط
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 🎯 المعادلة السحرية المضبوطة بدقة:
+                double maxFontSizeByWidth = constraints.maxWidth / 14.5;
+                
+                // 🛑 رفعنا المعامل هنا إلى 29.5 لضمان عدم تجاوز النص لارتفاع الشاشة إطلاقاً
+                double maxFontSizeByHeight = constraints.maxHeight / 29.5;
+                
+                double finalFontSize = math.min(maxFontSizeByWidth, maxFontSizeByHeight);
+                double targetWidth = constraints.maxWidth - 16; 
 
-                  return SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: Column(
-                      // توسيط النصوص للصفحات القصيرة مثل الفاتحة وجزء عم
-                      mainAxisAlignment: (pageNumber == 1 || pageNumber == 2)
-                          ? MainAxisAlignment.center
-                          : MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: _buildVerses(
-                        verses,
-                        calculatedFontSize,
-                        pageNumber,
-                        context,
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 1.0),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black87, width: 1.0),
+                  ),
+                  width: double.infinity,
+                  height: double.infinity,
+                  alignment: Alignment.topCenter,
+                  // 🛡️ درع الحماية الأخير ضد القص: ScrollView مقفل التمرير
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: SizedBox(
+                      width: targetWidth,
+                      child: RichText(
+                        textAlign: TextAlign.justify, 
+                        textDirection: TextDirection.rtl,
+                        // 🛑 1. التعديل الجذري هنا: إجبار فلاتر على ارتفاع موحد صارم
+                      strutStyle: StrutStyle(
+                        fontFamily: 'KFGQPC_HAFS',
+                        fontSize: finalFontSize,
+                        height: 1.3, // 👈 ضع هنا نفس الرقم الذي اخترته للارتفاع في دالة _buildVersesSpans
+                        forceStrutHeight: true, // هذه الخاصية هي التي تمنع تمدد السطور بسبب التشكيل
+                      ),
+                      
+                      // 🛑 2. ضمان عدم تمدد السطر الأول والأخير
+                      textHeightBehavior: const TextHeightBehavior(
+                        applyHeightToFirstAscent: true,
+                        applyHeightToLastDescent: true,
+                      ),
+                        text: TextSpan(
+                          children: _buildVersesSpans(verses, finalFontSize, targetWidth, context),
+                        ),
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ),
 
-        // الفوتر
-        Padding(
-          padding: const EdgeInsets.only(top: 12.0, bottom: 15.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                ' ــ ',
-                style: TextStyle(fontSize: 20, color: Colors.black54),
-              ),
-              Text(
-                _toArabic(pageNumber),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const Text(
-                ' ــ ',
-                style: TextStyle(fontSize: 20, color: Colors.black54),
-              ),
-            ],
-          ),
+      // 🥉 الفوتر
+      Padding(
+        padding: const EdgeInsets.only(top: 0.5, bottom: 0.5),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(' ــ ', style: TextStyle(fontSize: 15, color: Colors.black54)),
+            Text(
+              _toArabic(pageNumber),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+            const Text(' ــ ', style: TextStyle(fontSize: 15, color: Colors.black54)),
+          ],
         ),
-      ],
-    );
+      ),
+    ],
+  );
+}
+
+  // 🎯 بناء كتلة النص المتصلة (تجميع الترويسات والآيات والبسملة)
+ List<InlineSpan> _buildVersesSpans(
+  List<AyahModel> allVersesOnPage,
+  double fontSize,
+  double targetWidth,
+  BuildContext context,
+) {
+  List<InlineSpan> spans = [];
+  Map<int, List<AyahModel>> surahsOnPage = {};
+
+  for (var ayah in allVersesOnPage) {
+    if (!surahsOnPage.containsKey(ayah.sora)) {
+      surahsOnPage[ayah.sora] = [];
+    }
+    surahsOnPage[ayah.sora]!.add(ayah);
   }
 
-  List<Widget> _buildVerses(
-    List<AyahModel> allVersesOnPage,
-    double fontSize,
-    int pageNumber,
-    BuildContext context,
-  ) {
-    List<Widget> widgets = [];
-    Map<int, List<AyahModel>> surahsOnPage = {};
+  for (var entry in surahsOnPage.entries) {
+    int sNum = entry.key;
+    List<AyahModel> ayahList = entry.value;
 
-    for (var ayah in allVersesOnPage) {
-      if (!surahsOnPage.containsKey(ayah.sora)) {
-        surahsOnPage[ayah.sora] = [];
-      }
-      surahsOnPage[ayah.sora]!.add(ayah);
-    }
+    // أ. الترويسة والبسملة اليدوية
+    if (ayahList.first.ayaNo == 1) {
+      spans.add(
+        WidgetSpan(
+          child: Container(
+            width: targetWidth,
+            alignment: Alignment.center,
+            child: _buildSurahBanner(ayahList.first.soraNameAr, fontSize),
+          ),
+        ),
+      );
 
-    for (var entry in surahsOnPage.entries) {
-      int sNum = entry.key;
-      List<AyahModel> ayahList = entry.value;
+      if (sNum != 9) {
+        String basmalahText = quran.basmala;
+        if (sNum == 1) {
+          basmalahText += ' ﴿١﴾';
+        }
 
-      // إضافة الترويسة والبسملة المستقلة (لغير الفاتحة والتوبة)
-      if (ayahList.first.ayaNo == 1) {
-        widgets.add(_buildSurahBanner(ayahList.first.soraNameAr, fontSize));
-
-        if (sNum != 1 && sNum != 9) {
-          widgets.add(
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
-              child: Center(
+  spans.add(
+          WidgetSpan(
+            // 🛑 العصا السحرية: تسمح لك بإزاحة البسملة يدوياً متجاهلة قيود الصفحة
+            child: Transform.translate(
+              // 👈 قم بتكبير رقم 12 (مثلاً 18 أو 20) إذا أردت دفع البسملة للأسفل أكثر باتجاه الآيات
+              // 👈 أو استخدم قيمة سالبة (-5) لرفعها للأعلى باتجاه ترويسة السورة
+              offset: const Offset(1, 2), 
+              child: Container(
+                width: targetWidth,
+                alignment: Alignment.center,
+                padding: EdgeInsets.zero, // تصفير البادينغ تماماً
                 child: Text(
-                  quran.basmala,
+                  basmalahText,
                   style: TextStyle(
-                    fontFamily: 'Uthmanic',
+                    fontFamily: 'KFGQPC_HAFS',
                     fontSize: fontSize * 1.1,
                     color: Colors.black,
+                    // 🛑 قص الفراغ الوهمي السفلي المحجوز داخل ملف الخط نفسه
+                    height: 0.5, 
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-          );
-        }
-      }
-
-      // تجهيز نصوص الآيات
-      List<InlineSpan> spans = [];
-      for (var ayah in ayahList) {
-        String vText = ayah.text;
-
-        // قص البسملة المدمجة للآية الأولى لغير الفاتحة والتوبة
-        if (ayah.ayaNo == 1 && sNum != 1 && sNum != 9) {
-          vText = _cleanVerseOne(vText);
-        }
-
-        final recognizer = LongPressGestureRecognizer()
-          ..onLongPress = () {
-            _showTafseerSheet(context, ayah);
-          };
-
-        // 🎯 وضع علامة \u200F قبل وبعد النص لضبط اتجاه الأرقام RTL
-        spans.add(
-          TextSpan(
-            text: '\u200F$vText \u200F',
-            style: TextStyle(
-              fontFamily: 'Uthmanic',
-              fontSize: fontSize,
-              color: Colors.black,
-              height: 1.8,
-            ),
-            recognizer: recognizer,
-          ),
-        );
-
-        spans.add(_buildAyahMarker(ayah.ayaNo, fontSize, context, ayah));
-        spans.add(const TextSpan(text: ' '));
-      }
-
-      if (spans.isNotEmpty) {
-        widgets.add(
-          RichText(
-            // الفاتحة والصفحات القصيرة جداً يتم توسيطها لحل مشكلة التمدد
-            textAlign: (pageNumber == 1 || pageNumber == 2)
-                ? TextAlign.center
-                : TextAlign.justify,
-            textDirection: TextDirection.rtl,
-            text: TextSpan(children: spans),
           ),
         );
       }
     }
-    return widgets;
-  }
 
-  // 🎯 الأيقونة مضبوطة تماماً في المنتصف
-  InlineSpan _buildAyahMarker(
-    int ayahNo,
-    double fontSize,
-    BuildContext context,
-    AyahModel ayah,
-  ) {
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: GestureDetector(
-        onLongPress: () => _showTafseerSheet(context, ayah),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: fontSize * 1.5,
-          height: fontSize * 1.5,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SvgPicture.string(
-                '''<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                     <path d="M 50 5 C 65 20, 93 35, 93 60 C 93 85, 75 95, 50 95 C 25 95, 7 85, 7 60 C 7 35, 35 20, 50 5 Z" stroke="black" stroke-width="4.5" fill="none" />
-                     <circle cx="50" cy="60" r="26" stroke="black" stroke-width="2.5" fill="none" />
-                   </svg>''',
-              ),
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: 6.0,
-                ), // وزن الخط العثماني يتطلب إزاحة بسيطة للأسفل
-                child: Text(
-                  _toArabic(ayahNo),
-                  style: TextStyle(
-                    fontFamily: 'Uthmanic',
-                    fontSize: fontSize * 0.75,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
+    // ب. سرد نص الآيات متصلاً
+ // استبدل هذا الجزء داخل حلقة (for) التي تسرد الآيات
+for (var ayah in ayahList) {
+  if (sNum == 1 && ayah.ayaNo == 1) continue;
+
+  // استخدام الدالة الجديدة المحصنة
+  String vText = _getCleanVerseText(ayah);
+
+  final recognizer = LongPressGestureRecognizer()
+    ..onLongPress = () {
+      _showTafseerSheet(context, ayah);
+    };
+  // ... باقي الكود الخاص بـ TextSpan كما هو
+      spans.add(
+        TextSpan(
+          text: '$vText ',
+          style: TextStyle(
+            fontFamily: 'KFGQPC_HAFS',
+            fontSize: fontSize *0.85,
+            color: Colors.black,
+            height: 1.3, // مسافة عمودية كافية تمنع تداخل التشكيل تماماً
           ),
+          recognizer: recognizer,
         ),
-      ),
-    );
-  }
+      );
 
+      // وضع رقم الآية محصناً داخل نفس سياق النص
+      spans.add(
+        TextSpan(
+          text: '﴿${_toArabic(ayah.ayaNo)}﴾ ',
+          style: TextStyle(
+            fontFamily: 'KFGQPC_HAFS',
+            fontSize: fontSize * 0.9,
+            color: AppColors.primary,
+          ),
+          recognizer: recognizer,
+        ),
+      );
+    }
+  }
+  return spans;
+}
+
+  // 🎯 ترويسة السورة المعدلة لتعمل داخل الـ WidgetSpan
   Widget _buildSurahBanner(String surahName, double fontSize) {
     return Container(
-      height: fontSize * 2.5,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      height: fontSize * 1.2,
+      margin: const EdgeInsets.symmetric(vertical: 1),
       decoration: BoxDecoration(
         color: const Color(0xFFF3E8D3),
-        border: Border.all(color: Colors.black87, width: 2.0),
+        border: Border.all(color: Colors.black87, width: 0.3),
       ),
       child: Container(
-        margin: const EdgeInsets.all(2.0),
+        margin: const EdgeInsets.all(0.5),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.black87, width: 1.0),
+          border: Border.all(color: Colors.black87, width: 0.3),
         ),
         child: Center(
           child: Text(
             'سُورَةُ $surahName',
             style: TextStyle(
               fontFamily: 'Uthmanic',
-              fontSize: fontSize * 1.2,
+              fontSize: fontSize * 0.8,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
@@ -545,7 +541,7 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
                 style: const TextStyle(
-                  fontFamily: 'Uthmanic',
+                  fontFamily: 'Uthmanic', // يمكن تغييرها لاحقاً لـ KFGQPC_HAFS إذا أردت
                   fontSize: 26,
                   color: Colors.black87,
                   height: 1.8,
@@ -595,7 +591,6 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
                     height: 1.6,
                   ),
                 ),
-                const SizedBox(height: 20),
               ],
             ],
           ),
@@ -604,9 +599,9 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
     );
   }
 
+  // 🤲 دعاء الختم الكامل (محفوظ بالكامل كما أرسلته)
   void _showKhatmDuaSheet(BuildContext context) {
     showModalBottomSheet(
-      // ... نفس كود دعاء الختم السابق تماماً لعدم الإطالة
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -650,6 +645,12 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
                 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ، وَصَلَّى اللهُ عَلَى سَيِّدِنَا وَنَبِيِّنَا مُحَمَّدٍ وَعَلَى آلِهِ وَأَصْحَابِهِ الأَخْيَارِ وَسَلَّمَ تَسْلِيمًا كَثِيرًا.',
                 textAlign: TextAlign.justify,
                 textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontFamily: 'Uthmanic',
+                  fontSize: 24,
+                  height: 1.8,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
