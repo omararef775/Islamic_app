@@ -43,7 +43,7 @@ class IslamicApp extends StatelessWidget {
     // 🎯 توفير جميع العقول المدبرة (Cubits) لجميع شاشات التطبيق من نقطة واحدة
     return MultiBlocProvider(
       providers: [
-        BlocProvider<QuranCubit>(create: (context) => QuranCubit()),
+        BlocProvider<QuranCubit>(create: (context) => QuranCubit()..loadBookmark()),
         BlocProvider<AdhkarCubit>(create: (context) => AdhkarCubit()),
         BlocProvider<PrayerCubit>(create: (context) => PrayerCubit()),
         BlocProvider<QiblaCubit>(create: (context) => QiblaCubit()),

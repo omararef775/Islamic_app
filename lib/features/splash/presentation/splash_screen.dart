@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // 🎯 تأكد من صحة هذه المسارات بناءً على هيكلة مشروعك
-import '../../../../core/theme/app_colors.dart'; 
+import '../../../../core/theme/app_colors.dart';
 import '../../main_navigation/presentation/main_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 
@@ -14,7 +14,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -26,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // إعداد الأنيميشن بسلاسة تليق بتطبيق إسلامي
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2), 
+      duration: const Duration(seconds: 2),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -41,10 +42,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _startAppLogic();
   }
 
-Future<void> _startAppLogic() async {
+  Future<void> _startAppLogic() async {
     // 1. الانتظار لـ 3.5 ثانية لعرض اللوجو والأنيميشن
     await Future.delayed(const Duration(milliseconds: 3500));
-    
+
     // 2. التحقق من الذاكرة (هنا يحدث انتظار جديد await)
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
@@ -52,14 +53,16 @@ Future<void> _startAppLogic() async {
     // 🎯 الحماية المعمارية: الفحص يجب أن يكون هنا، بعد كل عمليات الـ await وقبل استخدام الـ context
     if (!mounted) return;
 
-    Widget nextScreen = onboardingCompleted ? const MainScreen() : const OnboardingScreen();
+    Widget nextScreen = onboardingCompleted
+        ? const MainScreen()
+        : const OnboardingScreen();
 
     // 3. الانتقال السلس (Fade Transition) للشاشة التالية
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 1200), 
-        pageBuilder: (context, animation, secondaryAnimation) => nextScreen, 
+        transitionDuration: const Duration(milliseconds: 1200),
+        pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -106,15 +109,16 @@ Future<void> _startAppLogic() async {
                     children: [
                       // اللوجو الخاص بك
                       Image.asset(
-                        'assets/images/logo.png', 
-                        width: 200, 
+                        'assets/images/logo.png',
+                        width: 200,
                         fit: BoxFit.contain,
                         // في حال عدم وجود الصورة، نظهر أيقونة مسجد فخمة
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.mosque_rounded, 
-                          size: 120, 
-                          color: AppColors.primary, // اللون الذهبي للتطبيق
-                        ),
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                              Icons.mosque_rounded,
+                              size: 120,
+                              color: AppColors.primary, // اللون الذهبي للتطبيق
+                            ),
                       ),
                       const SizedBox(height: 24),
                       // الاسم التجاري
@@ -122,7 +126,8 @@ Future<void> _startAppLogic() async {
                         'Omar Codes',
                         style: TextStyle(
                           fontSize: 32,
-                          fontFamily: 'Uthmanic', // لمسة إسلامية للخط الإنجليزي أو يمكنك تركه عادي
+                          fontFamily:
+                              'Uthmanic', // لمسة إسلامية للخط الإنجليزي أو يمكنك تركه عادي
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2.0,
                           color: AppColors.primary, // ذهبي
@@ -160,7 +165,7 @@ Future<void> _startAppLogic() async {
                       width: 35,
                       height: 35,
                       child: CircularProgressIndicator(
-                        color: AppColors.primary, 
+                        color: AppColors.primary,
                         strokeWidth: 3,
                       ),
                     ),
@@ -169,7 +174,7 @@ Future<void> _startAppLogic() async {
                       'تم التصميم والتطوير بواسطة',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withAlpha(150), 
+                        color: Colors.white.withAlpha(150),
                         letterSpacing: 1.0,
                       ),
                     ),
@@ -179,8 +184,8 @@ Future<void> _startAppLogic() async {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white, 
-                        letterSpacing: 1.5, 
+                        color: Colors.white,
+                        letterSpacing: 1.5,
                       ),
                     ),
                     const SizedBox(height: 4),

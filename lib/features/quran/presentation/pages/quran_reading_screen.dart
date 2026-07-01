@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:quran/quran.dart' as quran;
 import '../../../../core/theme/app_colors.dart';
 import '../manager/quran_cubit.dart';
-import '../manager/quran_state.dart';
 import '../../data/quran_db_helper.dart';
 import '../../domain/ayah_model.dart';
 import 'quran_screen.dart';
@@ -50,7 +49,7 @@ class _QuranReadingScreenState extends State<QuranReadingScreen> {
     const en = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     String res = n.toString();
-    for (int i = 0; i < 10; i++) res = res.replaceAll(en[i], ar[i]);
+    for (int i = 0; i < 10; i++) { res = res.replaceAll(en[i], ar[i]); }
     return res;
   }
 

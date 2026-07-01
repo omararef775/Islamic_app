@@ -40,5 +40,11 @@ class QuranCubit extends Cubit<QuranState> {
   Future<void> saveBookmark(int pageNumber) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_bookmarkKey, pageNumber);
+    if (state is QuranLoaded) {
+      emit(QuranLoaded(verses: (state as QuranLoaded).verses, currentPage: pageNumber));
+    }
+    else {
+      emit(QuranLoaded(verses: [], currentPage: pageNumber));
+    }
   }
 }
