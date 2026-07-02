@@ -3,27 +3,73 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:developer' as developer;
+import 'dart:io';
 
+// ==============================================================
+// 🎯 معالج إجراءات الإشعار في الخلفية
+// CRITICAL: يجب أن تكون دالة خارجية (Top-level) وليست داخل كلاس
+// والوسم @pragma ضروري لمنع Dart Compiler من حذفها في Release Mode
+// ==============================================================
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  final String? actionId = notificationResponse.actionId;
+  final int notificationId = notificationResponse.id ?? -1;
+
+  developer.log(
+    'تم استقبال إجراء خلفي | action=$actionId | id=$notificationId',
+    name: 'AdhanBackground',
+  );
+
+  // 🛑 إيقاف الأذان فوراً عند الضغط على زر "إيقاف الأذان" من خارج التطبيق
+  if (actionId == 'stop_adhan_action') {
+    if (notificationId != -1) {
+      FlutterLocalNotificationsPlugin().cancel(id: notificationId);
+      developer.log(
+        '✅ تم إيقاف الأذان بنجاح من خارج التطبيق (ID: $notificationId)',
+        name: 'AdhanBackground',
+      );
+    }
+  }
+}
+
+// ==============================================================
+// 📢 خدمة الإشعارات المركزية لإدارة أذان الصلوات الخمس
+// ==============================================================
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // 🎯 معرف القناة كثابت مركزي لاستخدامه في الجدولة أيضاً
-  static const String _channelId = 'adhan_audio_channel_v2';
+  // 🎯 v3: معرف قناة جديد لإجبار أندرويد على إنشاء قناة جديدة
+  // بالصوت المخصص المحدد، متجاوزاً كاش القناة القديمة
+  static const String _channelId = 'adhan_audio_channel_v3';
+  static const String _channelName = 'إشعارات الأذان';
+  static const String _channelDescription =
+      'قناة مخصصة لتنبيهات أوقات الصلاة بصوت الأذان الحقيقي';
 
+  // ==============================================================
+  // 🚀 تهيئة الخدمة في بداية التطبيق
+  // ==============================================================
   static Future<void> init() async {
-    // تهيئة قاعدة بيانات المناطق الزمنية
+    // 1️⃣ تهيئة قاعدة بيانات المناطق الزمنية
     tz_data.initializeTimeZones();
 
     try {
       final timezoneInfo = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+      developer.log(
+        'المنطقة الزمنية: ${timezoneInfo.identifier}',
+        name: 'NotificationService',
+      );
     } catch (e) {
-      // الاحتياط بالتوقيت السعودي كافتراضي
       tz.setLocalLocation(tz.getLocation('Asia/Riyadh'));
+      developer.log(
+        'تحذير: تعذر تحديد المنطقة الزمنية، يُستخدم Asia/Riyadh كافتراضي',
+        name: 'NotificationService',
+        error: e,
+      );
     }
 
-    // إعدادات الأندرويد
+    // 2️⃣ إعدادات تهيئة أندرويد
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/launcher_icon');
 
@@ -31,21 +77,38 @@ class NotificationService {
       android: androidSettings,
     );
 
-    await _notificationsPlugin.initialize(settings: settings);
+    // 3️⃣ تهيئة المكتبة مع معالجات الاستجابة (Named parameters في v21)
+    await _notificationsPlugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
 
-    // 🚀 الإصلاح الحاسم: إنشاء قناة الأذان برمجياً وتسجيلها لدى نظام أندرويد
-    // عند إنشاء القناة بشكل صريح ومبكر، يتم تثبيت الصوت المخصص (adhan.mp3)
-    // على القناة قبل أن ينشئها النظام بنفسه بصوت افتراضي مختلف.
-    // ملاحظة: الأندرويد يمنع تعديل صوت قناة موجودة من قبل، لذا المعرف الجديد (_v2)
-    // يضمن حذف أي قناة قديمة تم إنشاؤها بالصوت الافتراضي.
+    // 4️⃣ إنشاء قناة الأذان الصوتية المخصصة مبكراً
+    await _createAdhanChannel();
+
+    developer.log(
+      '✅ تهيئة خدمة الإشعارات اكتملت بنجاح',
+      name: 'NotificationService',
+    );
+  }
+
+  // ==============================================================
+  // 🎵 إنشاء قناة الأذان بالصوت المخصص
+  // ==============================================================
+  static Future<void> _createAdhanChannel() async {
+    if (!Platform.isAndroid) return;
+
     const AndroidNotificationChannel adhanChannel = AndroidNotificationChannel(
       _channelId,
-      'إشعارات الأذان',
-      description: 'قناة مخصصة لتنبيهات أوقات الصلاة بصوت الأذان',
+      _channelName,
+      description: _channelDescription,
       importance: Importance.max,
       playSound: true,
+      // 🔊 الصوت المخصص: android/app/src/main/res/raw/adhan.mp3
       sound: RawResourceAndroidNotificationSound('adhan'),
       enableVibration: true,
+      showBadge: true,
     );
 
     await _notificationsPlugin
@@ -54,38 +117,78 @@ class NotificationService {
         ?.createNotificationChannel(adhanChannel);
 
     developer.log(
-      'تم تهيئة خدمة الإشعارات وتسجيل قناة الأذان بنجاح',
+      '✅ تم إنشاء قناة الأذان: $_channelId',
       name: 'NotificationService',
     );
   }
 
+  // ==============================================================
+  // 🔔 معالج النقر على الإشعار (التطبيق قيد التشغيل أو في الخلفية)
+  // ==============================================================
+  static void _onNotificationTap(NotificationResponse response) {
+    final String? actionId = response.actionId;
+    final int notificationId = response.id ?? -1;
+
+    developer.log(
+      'نقر على الإشعار | action=$actionId | id=$notificationId',
+      name: 'NotificationService',
+    );
+
+    // 🛑 إيقاف صوت الأذان عند الضغط على زر "إيقاف الأذان"
+    if (actionId == 'stop_adhan_action') {
+      if (notificationId != -1) {
+        _notificationsPlugin.cancel(id: notificationId);
+        developer.log(
+          '✅ تم إيقاف الأذان من داخل التطبيق (ID: $notificationId)',
+          name: 'NotificationService',
+        );
+      }
+    }
+  }
+
+  // ==============================================================
+  // ⏰ جدولة أذان صلاة محددة
+  // ==============================================================
   static Future<void> scheduleAdhan({
     required int id,
     required String prayerName,
     required DateTime prayerTime,
   }) async {
     try {
-      // تجاهل الأوقات التي مضت بالفعل
+      // 🛡️ تجاهل الأوقات التي مضت بالفعل
       if (prayerTime.isBefore(DateTime.now())) {
         return;
       }
 
-      // 🎯 ربط إعدادات الإشعار بنفس معرف القناة المُسجَّلة في init()
-      // هذا هو الرابط الحيوي الذي يضمن تشغيل الصوت المخصص (adhan.mp3)
+      // 🎯 اختيار نمط الجدولة بناءً على الصلاحيات المتاحة
+      final AndroidScheduleMode scheduleMode =
+          await _getOptimalScheduleMode();
+
+      // 🎨 تفاصيل الإشعار مع زر "إيقاف الأذان"
       final AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
-        _channelId, // ← نفس معرف القناة المسجلة أعلاه
-        'إشعارات الأذان',
-        channelDescription:
-            'قناة مخصصة لتنبيهات أوقات الصلاة بصوت الأذان',
+        _channelId,
+        _channelName,
+        channelDescription: _channelDescription,
         importance: Importance.max,
         priority: Priority.high,
         playSound: true,
         sound: const RawResourceAndroidNotificationSound('adhan'),
         enableVibration: true,
-        // 🎯 ضمان ظهور الإشعار بوضوح حتى أثناء وضع عدم الإزعاج
+        // 🔔 إظهار الإشعار فوق شاشة القفل
         fullScreenIntent: true,
         visibility: NotificationVisibility.public,
+        // 🔕 لا يلغي نفسه تلقائياً لإتاحة الفرصة لإيقاف الصوت
+        autoCancel: false,
+        // 🎯 زر "إيقاف الأذان" يظهر في الإشعار
+        actions: const <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            'stop_adhan_action',    // المعرف الفريد للإجراء
+            '🔇 إيقاف الأذان',      // النص الذي يراه المستخدم
+            cancelNotification: true,  // يلغي الإشعار تلقائياً عند الضغط
+            showsUserInterface: false, // لا يفتح التطبيق
+          ),
+        ],
       );
 
       final NotificationDetails notificationDetails = NotificationDetails(
@@ -97,28 +200,80 @@ class NotificationService {
 
       await _notificationsPlugin.zonedSchedule(
         id: id,
-        title: 'حان الآن موعد صلاة $prayerName',
-        body: 'حي على الصلاة، حي على الفلاح',
+        title: 'حان وقت أذان $prayerName 🕌',
+        body: 'حيَّ على الصلاة، حيَّ على الفلاح',
         scheduledDate: scheduledTime,
         notificationDetails: notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
       );
 
       developer.log(
-        'تمت جدولة أذان $prayerName في ${prayerTime.toString()}',
+        '⏰ جُدِّل أذان $prayerName في ${prayerTime.toString()} | نمط: ${scheduleMode.name}',
         name: 'NotificationService',
       );
     } catch (e) {
       developer.log(
-        'فشل في جدولة أذان $prayerName',
+        '❌ فشل جدولة أذان $prayerName',
         name: 'NotificationService',
         error: e,
       );
     }
   }
 
+  // ==============================================================
+  // 🧠 تحديد أفضل نمط جدولة بناءً على صلاحيات الجهاز
+  // ==============================================================
+  static Future<AndroidScheduleMode> _getOptimalScheduleMode() async {
+    if (!Platform.isAndroid) return AndroidScheduleMode.exactAllowWhileIdle;
+
+    try {
+      final bool? canScheduleExact = await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.canScheduleExactNotifications();
+
+      if (canScheduleExact == true) {
+        developer.log(
+          '✅ استخدام الجدولة الدقيقة (exactAllowWhileIdle)',
+          name: 'NotificationService',
+        );
+        return AndroidScheduleMode.exactAllowWhileIdle;
+      } else {
+        developer.log(
+          '⚠️ الصلاحية الدقيقة غير متاحة، استخدام inexactAllowWhileIdle كـ Fallback',
+          name: 'NotificationService',
+        );
+        return AndroidScheduleMode.inexactAllowWhileIdle;
+      }
+    } catch (e) {
+      developer.log(
+        '⚠️ خطأ في فحص الصلاحية، fallback لـ inexactAllowWhileIdle',
+        name: 'NotificationService',
+        error: e,
+      );
+      return AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+  }
+
+  // ==============================================================
+  // 🔕 إلغاء إشعار أذان معين بمعرفه
+  // ==============================================================
+  static Future<void> cancelAdhan(int notificationId) async {
+    await _notificationsPlugin.cancel(id: notificationId);
+    developer.log(
+      '🔕 تم إلغاء الأذان بالمعرف: $notificationId',
+      name: 'NotificationService',
+    );
+  }
+
+  // ==============================================================
+  // 🗑️ إلغاء جميع إشعارات الأذان المجدولة
+  // ==============================================================
   static Future<void> cancelAll() async {
     await _notificationsPlugin.cancelAll();
-    developer.log('تم إلغاء جميع إشعارات الأذان', name: 'NotificationService');
+    developer.log(
+      '🗑️ تم إلغاء جميع إشعارات الأذان',
+      name: 'NotificationService',
+    );
   }
 }

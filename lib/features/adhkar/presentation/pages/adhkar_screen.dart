@@ -80,11 +80,25 @@ class _AdhkarScreenState extends State<AdhkarScreen> with SingleTickerProviderSt
           } else if (state is AdhkarLoaded) {
             
             if (state.adhkar.isEmpty) {
-              return const Center(
-                child: Text(
-                  'لا توجد أذكار هنا بعد.\nأضف أذكارك الخاصة!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
+              // 🎯 رسالة مناسبة لكل فئة
+              final emptyMessage = state.currentCategory == 'custom'
+                  ? 'لا توجد أذكار مخصصة بعد.\nاضغط + لإضافة ذكرك الأول!'
+                  : 'حدث خطأ في تحميل الأذكار.\nأعد تشغيل التطبيق.';
+              final emptyIcon = state.currentCategory == 'custom'
+                  ? Icons.add_circle_outline
+                  : Icons.error_outline;
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(emptyIcon, size: 60, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      emptyMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey, fontSize: 16, height: 1.6),
+                    ),
+                  ],
                 ),
               );
             }

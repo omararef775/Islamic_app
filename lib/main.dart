@@ -21,14 +21,14 @@ import 'package:islamic_app/features/splash/presentation/splash_screen.dart';
 Future<void> main() async {
   // 1. ضمان تهيئة محرك فلاتر قبل تشغيل أي كود
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 2. تهيئة التواريخ باللغة العربية (ضروري لمواقيت الصلاة)
   await initializeDateFormatting('ar', null);
-  
+
   // 3. تهيئة خدمة الإشعارات (الأذان)
   await NotificationService.init();
 
-  // 4. 🎯 تشغيل خدمة فحص وتصفير الأذكار اليومية قبل فتح الشاشات
+  // 4. فحص وتصفير الأذكار اليومية عند الإطلاق
   await DailyResetService.checkAndResetIfNewDay();
 
   // 5. الانطلاق
@@ -40,7 +40,6 @@ class IslamicApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🎯 توفير جميع العقول المدبرة (Cubits) لجميع شاشات التطبيق من نقطة واحدة
     return MultiBlocProvider(
       providers: [
         BlocProvider<QuranCubit>(create: (context) => QuranCubit()..loadBookmark()),
@@ -49,10 +48,8 @@ class IslamicApp extends StatelessWidget {
         BlocProvider<QiblaCubit>(create: (context) => QiblaCubit()),
       ],
       child: MaterialApp(
-        title: 'Omar Codes Islamic App', // اسم التطبيق البرمجي
-        debugShowCheckedModeBanner: false, // إخفاء شريط الـ Debug
-        
-        // 🎯 ضبط الثيم العالمي لـ Spiritual Dark Mode
+        title: 'رفيق المسلم',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
           scaffoldBackgroundColor: AppColors.background,
           primaryColor: AppColors.primary,
@@ -66,12 +63,55 @@ class IslamicApp extends StatelessWidget {
             centerTitle: true,
             iconTheme: IconThemeData(color: Colors.white),
           ),
-          fontFamily: 'Tajawal', // أو أي خط عربي رئيسي تستخدمه للواجهات
+          fontFamily: 'Tajawal',
         ),
-        
-        // 🎯 توجيه المستخدم دائماً لشاشة التهيئة (Splash) أولاً
-        home: const SplashScreen(),
+        // 🎯 استخدام AppLifecycleWrapper لفحص التصفير عند العودة للتطبيق
+        home: const AppLifecycleWrapper(child: SplashScreen()),
       ),
     );
   }
+}
+
+// ==============================================================
+// 🔄 مراقب دورة حياة التطبيق لتصفير الأذكار عند الاستئناف
+//
+// 🎯 يحل المشكلة الحرجة:
+// إذا أبقى المستخدم التطبيق مفتوحاً طوال الليل وعاد إليه صباحاً
+// بدون إغلاقه، هذا الـ Observer يفحص التاريخ فور استئناف التطبيق
+// ويُصفِّر العدادات إذا كان يوماً جديداً.
+// ==============================================================
+class AppLifecycleWrapper extends StatefulWidget {
+  final Widget child;
+  const AppLifecycleWrapper({super.key, required this.child});
+
+  @override
+  State<AppLifecycleWrapper> createState() => _AppLifecycleWrapperState();
+}
+
+class _AppLifecycleWrapperState extends State<AppLifecycleWrapper>
+    with WidgetsBindingObserver {
+
+  @override
+  void initState() {
+    super.initState();
+    // تسجيل هذا الـ Widget كمراقب لدورة حياة التطبيق
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 🎯 عند استئناف التطبيق من الخلفية أو شاشة القفل
+    if (state == AppLifecycleState.resumed) {
+      DailyResetService.checkAndResetIfNewDay();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  🛡️ ملف حماية الموارد من الحذف أثناء بناء الـ Release APK
+  يمنع نظام بناء أندرويد (R8/ProGuard) من حذف صوت الأذان المخصص
+  لأن النظام يعتبره "غير مستخدم" (لا إشارة إليه في كود Java/Kotlin)
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+           tools:keep="@raw/adhan" />
