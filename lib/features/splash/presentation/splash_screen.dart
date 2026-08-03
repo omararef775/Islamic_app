@@ -121,19 +121,6 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                       ),
                       const SizedBox(height: 24),
-                      // الاسم التجاري
-                      const Text(
-                        'Omar Codes',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontFamily:
-                              'Uthmanic', // لمسة إسلامية للخط الإنجليزي أو يمكنك تركه عادي
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.0,
-                          color: AppColors.primary, // ذهبي
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       // وصف قصير (اختياري)
                       Text(
                         'رفيقك المسلم',

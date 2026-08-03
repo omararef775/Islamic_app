@@ -46,11 +46,11 @@ class AdhkarCubit extends Cubit<AdhkarState> {
     }
   }
 
-  Future<void> addCustomDhikr(String text, int targetCount) async {
-    // 🎯 استخدام الـ Model لتغليف البيانات بدلاً من كتابة Map يدوية
+  Future<void> addCustomDhikr(String text, int targetCount, String category) async {
+    // 🎯 يدعم الإضافة لأي قسم: morning / evening / custom
     final newDhikr = AdhkarModel(
       text: text,
-      category: 'custom',
+      category: category,
       targetCount: targetCount,
       currentCount: targetCount,
       isCustom: true,
@@ -58,19 +58,22 @@ class AdhkarCubit extends Cubit<AdhkarState> {
 
     try {
       await dbHelper.insertDhikr(newDhikr.toMap());
-      await loadAdhkar('custom');
+      // ⬅️ إعادة تحميل نفس القسم الذي أضفنا إليه الذكر
+      await loadAdhkar(category);
     } catch (e) {
       emit(AdhkarError("فشل في إضافة الذكر: ${e.toString()}"));
     }
   }
 
-  Future<void> updateCustomDhikr(int id, String newText, int newTarget) async {
+  Future<void> updateCustomDhikr(int id, String newText, int newTarget, String category) async {
     await dbHelper.updateCustomDhikr(id, newText, newTarget);
-    await loadAdhkar('custom');
+    // ⬅️ إعادة تحميل القسم الصحيح بعد التعديل
+    await loadAdhkar(category);
   }
 
-  Future<void> deleteCustomDhikr(int id) async {
+  Future<void> deleteCustomDhikr(int id, String category) async {
     await dbHelper.deleteDhikr(id);
-    await loadAdhkar('custom');
+    // ⬅️ إعادة تحميل القسم الصحيح بعد الحذف
+    await loadAdhkar(category);
   }
 }
