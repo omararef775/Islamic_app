@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:quran_library/quran_library.dart';
 
 // 🎯 استدعاءات الثيم الأساسي
 import 'package:islamic_app/core/theme/app_colors.dart';
@@ -22,16 +23,19 @@ Future<void> main() async {
   // 1. ضمان تهيئة محرك فلاتر قبل تشغيل أي كود
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. تهيئة التواريخ باللغة العربية (ضروري لمواقيت الصلاة)
+  // 2. تهيئة مكتبة القرآن الكريم
+  await QuranLibrary.init();
+
+  // 3. تهيئة التواريخ باللغة العربية (ضروري لمواقيت الصلاة)
   await initializeDateFormatting('ar', null);
 
-  // 3. تهيئة خدمة الإشعارات (الأذان)
+  // 4. تهيئة خدمة الإشعارات (الأذان)
   await NotificationService.init();
 
-  // 4. فحص وتصفير الأذكار اليومية عند الإطلاق
+  // 5. فحص وتصفير الأذكار اليومية عند الإطلاق
   await DailyResetService.checkAndResetIfNewDay();
 
-  // 5. الانطلاق
+  // 6. الانطلاق
   runApp(const IslamicApp());
 }
 
@@ -42,7 +46,9 @@ class IslamicApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<QuranCubit>(create: (context) => QuranCubit()..loadBookmark()),
+        BlocProvider<QuranCubit>(
+          create: (context) => QuranCubit()..loadSettings(),
+        ),
         BlocProvider<AdhkarCubit>(create: (context) => AdhkarCubit()),
         BlocProvider<PrayerCubit>(create: (context) => PrayerCubit()),
         BlocProvider<QiblaCubit>(create: (context) => QiblaCubit()),
@@ -51,6 +57,7 @@ class IslamicApp extends StatelessWidget {
         title: 'رفيق المسلم',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
+          useMaterial3: false,
           scaffoldBackgroundColor: AppColors.background,
           primaryColor: AppColors.primary,
           colorScheme: const ColorScheme.dark(
@@ -90,7 +97,6 @@ class AppLifecycleWrapper extends StatefulWidget {
 
 class _AppLifecycleWrapperState extends State<AppLifecycleWrapper>
     with WidgetsBindingObserver {
-
   @override
   void initState() {
     super.initState();
